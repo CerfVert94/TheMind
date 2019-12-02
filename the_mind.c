@@ -3,12 +3,14 @@
 #include <string.h>
 #include <time.h>
 #include "MQTTClient.h"
-#define ADDRESS     "tcp://localhost:1883"
+#define ADDRESS          "tcp://localhost:1883"
 #define CLIENTID         "TheMind"
 #define TOPIC_MIND       "TheMind"
 #define TOPIC_JOUEUR     "Joueur"
-#define QOS         1
-#define TIMEOUT     500L
+#define QOS              1
+#define TIMEOUT         500L
+#define TX_BUFFER_LEN   128
+#define MAX_JOUEUR      4
 
 MQTTClient client;
 MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
@@ -17,9 +19,13 @@ MQTTClient_deliveryToken token;
 
 volatile MQTTClient_deliveryToken deliveredtoken;
 int compteur=0;
-
+int compteur_joueur = 0;
 int cartes[101];
-
+void parseJoueur(char * tx_buffer, MQTTClient_message *message, int compteur_joueur);
+void parseJoueur(char * tx_buffer, MQTTClient_message *message, int compteur_joueur) 
+{
+    snprintf(tx_buffer, TX_BUFFER_LEN, "%s %d", (char*)message->payload, compteur_joueur);
+}
 void melangerPaquet()
 {
 	int i;
@@ -82,21 +88,30 @@ void delivered(void *context, MQTTClient_deliveryToken dt)
     deliveredtoken = dt;
 }
 
+
+void print_payload(MQTTClient_message *message){
+    int i = 0;
+    char* payloadptr;
+    payloadptr = message->payload;
+    for(i=0; i<message->payloadlen; i++)
+        putchar(*payloadptr++);
+    putchar('\n');
+}
 int msgarrvd(void *context, char *topicName, int topicLen, MQTTClient_message *message)
 {
     int i;
-    char* payloadptr;
+    char tx_buffer[128];
     printf("Message arrived\n");
     printf("     topic: %s\n", topicName);
     printf("   message: ");
-    payloadptr = message->payload;
-    for(i=0; i<message->payloadlen; i++)
-    {
-        putchar(*payloadptr++);
-    }
-    putchar('\n');
+    print_payload(message);
     MQTTClient_freeMessage(&message);
     MQTTClient_free(topicName);
+
+    if (compteur_joueur < MAX_JOUEUR) {
+        parseJoueur(tx_buffer, message, compteur_joueur++);
+
+    }
     compteur++;
 	if (compteur==5)
 	{
