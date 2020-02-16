@@ -5,5 +5,5 @@ cd mqtt_lib
 cmake ../mosquitto
 make
 cd ..
-cp mosquitto/lib/mosquitto.h        shared_include/
-cp mosquitto/client/client_shared.h shared_include/
+cp mosquitto/lib/mosquitto.h        shared_inc/
+cp mosquitto/client/client_shared.h shared_inc/
