@@ -1,0 +1,1 @@
+LD_LIBRARY_PATH=mqtt_lib/lib exe/TheMind
