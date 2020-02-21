@@ -12,12 +12,17 @@ server.on('ready', function(){
     var mqtt = require('mqtt');
     var client  = mqtt.connect('mqtt://localhost');
     client.on('connect', function () {
+	client.subscribe("#");
         /*client.subscribe(sub_topic1);
         client.subscribe(sub_topic2);
         client.subscribe(sub_topic3);
         client.subscribe(pub_topic);*/
     });
-    /*
+    client.on('message', function (topic, message) {
+	    context = message.toString();
+	    console.log(topic.toString() + " : " + context);
+    });
+ /*
     client.on('message', function (topic, message) {
         context = message.toString();
         
