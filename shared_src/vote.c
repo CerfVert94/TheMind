@@ -1,5 +1,7 @@
 #include <stdlib.h>
+#include <stdbool.h>
 #include <vote.h>
+#include <mymacro.h>
 
 static int *g_votes = NULL;
 static int  g_nb_players = 0;
@@ -14,8 +16,13 @@ void init_vote(int nb_players){
 
 }
 
+bool is_vote_called(void) {
+    return g_votes != NULL;
+}
+
 void vote(int id, int response){
-    g_votes[id] = response;
+    if (g_votes[id] == VOTE_WAIT)
+        g_votes[id] = response;
 }
 
 int ballot_count()
@@ -27,5 +34,6 @@ int ballot_count()
     if (count[VOTE_WAIT] > 0) 
         return VOTE_WAIT;
     free(g_votes);
+    g_votes = NULL;
     return count[VOTE_NO] < count[VOTE_YES] ? VOTE_YES : VOTE_NO;
 }
