@@ -17,11 +17,7 @@ static int g_nb_players = 0;
 static bool initialize_game = false;
 void registration(char *message);
 
-void rx_player(char *message);
-void rx_player(char *message){
-	printf("%s : %s\n", __func__, message);
 
-}
 void registration(char *message)
 {
 	int id;
@@ -37,8 +33,7 @@ void registration(char *message)
 		
 		// Send player id to the joined client
 		publish(mosq, player_name, pub_message, 2);
-		// Register new subscription topic & publication topic
-		add_publish_topic(  pub_topic);
+		
 		if (g_nb_players >= g_max_nb_players) 
 			initialize_game = true;
 		
