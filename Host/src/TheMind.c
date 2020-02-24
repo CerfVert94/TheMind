@@ -76,7 +76,6 @@ int init_game(int nb_shuffle) {
 
 int  end_game()
 {
-    printf("end game\n");
     exit(EXIT_SUCCESS);
 }
 void start_new_round() {
@@ -149,16 +148,14 @@ void message_from_player(char *message) {
         return;
     }
 
-    printf("Message from Player (id : %d / type : %d)\n", id, msg_type);
-    
 
     switch (msg_type) {
         case MSG_TYPE_CARD: 
+
         if (is_vote_called() || g_played_top == g_deck_top)
             return;
-        card = parse_card(message);
-        printf("Received card %d from Player %d\n", g_players[id].hand[card], id);
-        
+
+        card = parse_card(message);        
         play_card(g_players[id].hand, card);
         break;
 
@@ -169,17 +166,15 @@ void message_from_player(char *message) {
 
         response = parse_response(message);
         vote(id, response);
-        printf("Received ballot from Player %d (%d)\n", id, response);
+        
 
         final_count = ballot_count();
         if      (final_count == VOTE_NO)  {
             publish_notice("On a vote non pour shuriken.");
-            printf("Motion denied.\n");
         }
         else if (final_count == VOTE_YES) {
             publish_notice("On a vote oui pour shuriken.");
-            printf("Agreed upon shuriken.\n");
-            printf("Discard the lowest cards from each hand\n");
+            
             discard_lowest();
             decrement_shuriken();
         }
@@ -188,13 +183,13 @@ void message_from_player(char *message) {
         case MSG_TYPE_SHURIKEN: 
         if (is_vote_called() || !is_shuriken_available())
             return;
-        printf("Call a vote for a use of shuriken\n");
         publish_notice("Votez pour shuriken.");
         init_vote(g_nb_players);
         publish_vote();
         break;
     }
     next_round();
+    // Check answer to discard cards.
     if (g_played_top < g_deck_top){
         if (!check_answer()){
             
@@ -202,20 +197,17 @@ void message_from_player(char *message) {
             if (!is_alive()) {
                 publish_notice("Vous avez perdu.");
                 return;
-                // end_game();
             }
             // Remove last card from the played card list.
             move_card(g_players[id].hand, card, g_played, --g_played_top);
             publish_played(-1); 
 
             publish_notice("Mauvaise carte. Vous perdez une vie. On defausse les cartes plus basses.");
-            printf("Wrong card.\n");
-            printf("Life(s) : %d\n", get_lives());
-            printf("Discard all cards lower than %d.\n", g_players[id].hand[card]);
             discard_lower(g_players[id].hand[card]);
         }
     }
 
+    // Check answer to reward.
     if (check_answer() && get_level() <= MAX_LEVEL && g_played_top == g_deck_top){
         printf("Level up !\n");
         printf("Start the new round!\n");
