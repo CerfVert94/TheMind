@@ -114,6 +114,8 @@ function onMessageArrived(msg){
             stopic = "Player/" + myID.toString();
             console.log("Subscribe : ", stopic);
             mqtt.subscribe(stopic);
+
+            header.innerHTML = myName + " (" + myID.toString() + " : " + myCID.toString() + ")";
         }
     }
     else {

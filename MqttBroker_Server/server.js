@@ -5,7 +5,7 @@ var util = require("util"),
     express = require("express"),
     app = express(),
     http = require("http"),
-    sq = require('sqlite3'),
+    // sq = require('sqlite3'),
     mosca = require('mosca'),
     io = require("socket.io")(http);                              // Socket.IO
 
@@ -77,7 +77,7 @@ function init_themind() {
         shell: true,
     }
     
-    exec('LD_LIBRARY_PATH=../mqtt_lib/lib ../Host/exe/Host -p 1883 -h localhost -n 2', options, (error,stdout,stderr)=>{
+    exec('LD_LIBRARY_PATH=../mqtt_lib/lib ../Host/exe/Host -p 1883 -h localhost -n 4', options, (error,stdout,stderr)=>{
                                                                                                     // console.log('stdout:', stdout);
                                                                                                     // console.log('stderr:', stderr);
                                                                                                     if (error) {
@@ -99,6 +99,11 @@ function init() {
         // Start listening for events
         io.on("connection", onSocketConnection);
         console.log("server.js started");
+        console.log("Launch following links. (Name query can be modifiable but necessary)");
+        console.log("http://localhost:8000/index.html?name=User1");
+        console.log("http://localhost:8000/index.html?name=User2");
+        console.log("http://localhost:8000/index.html?name=User3");
+        console.log("http://localhost:8000/index.html?name=User4");
 };
 
 // New socket connection
