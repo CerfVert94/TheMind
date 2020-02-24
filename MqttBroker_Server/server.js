@@ -1,48 +1,116 @@
-var mosca = require('mosca');
-var settings = {
-		port:1883
-		}
+/**************************************************
+** NODE.JS REQUIREMENTS
+**************************************************/
+var util = require("util"),
+    express = require("express"),
+    app = express(),
+    http = require("http"),
+    sq = require('sqlite3'),
+    mosca = require('mosca'),
+    io = require("socket.io")(http);                              // Socket.IO
 
-var server = new mosca.Server(settings);
+/**************************************************
+** GAME VARIABLES
+**************************************************/
+var socket;             // Socket controller
+// var db = new sq.Database(__dirname + '/messages.db3');
+
+var mess="+";
+var sclient;
+var prot=0;
+var mqtt_server_init = false;
+
+function retrieveDatabase() {
+        // console.log("------------------------");
+        // db.each("SELECT * FROM message", function(err, row) {
+        // if (err) {
+        //         console.log(err);
+        // } else {
+        //         console.log(row.nom + " a écrit '" + row.content + "'");
+        // }
+        // });
+	// mess+="+";
+	// if (prot==1)
+	// 	//sclient.emit('message',mess);
+	// 	//sclient.broadcast.emit('message',mess);
+	// 	io.sockets.emit('message',mess);
+}
 
 
-server.on('ready', function(){
-    console.log("ready");
+/**************************************************
+** MQTT INITIALISATION
+**************************************************/
+function init_mqtt_server() {
+    let server = new mosca.Server(
+        {http: {
+            port: 9000,
+            bundle: true,
+            static: './public'},
+         port:1883
+        });
+    server.on('ready', function(){
+                                    console.log("[MQTT Broker] Server ready");
+                                    let mqtt = require('mqtt');
+                                    let client  = mqtt.connect('mqtt://localhost');
 
-    var mqtt = require('mqtt');
-    var client  = mqtt.connect('mqtt://localhost');
-    client.on('connect', function () {
-	client.subscribe("#");
-        /*client.subscribe(sub_topic1);
-        client.subscribe(sub_topic2);
-        client.subscribe(sub_topic3);
-        client.subscribe(pub_topic);*/
-    });
-    client.on('message', function (topic, message) {
-	    context = message.toString();
-	    console.log(topic.toString() + " : " + context);
-    });
- /*
-    client.on('message', function (topic, message) {
-        context = message.toString();
-        
-        if (topic == sub_topic1 ||
-            topic == sub_topic2 ||
-            topic == sub_topic3 ) {
-            let value = parseFloat(message);
-            let json_payload = "{\"" + topic + "\" : " + value + "}";
+                                    mqtt_server_init = true;
+                                    client.on('connect', function (){
+                                                                        client.subscribe("#");
+                                                                    });
+                                    client.on('message', function (topic, message) {
+                                        context = message.toString();
+                                        console.log(topic.toString() + " : " + context);
+                                    });
+                                    init_themind();
+                                });                                
+}
 
-            if (topic == sub_topic3) {
-                if (value > 2000) 
-                    client.publish(pub_topic, "gyro_on");
-                else
-                    client.publish(pub_topic, "gyro_off");
-            }
-        
-            // Temporary solution to bypass http response 302 problem 
-            send_payload2ubidot(json_payload);
-            
-        }
-        console.log(topic.toString() + " : " +context)
-    });*/
-});
+/**************************************************
+** GAME INITIALISATION
+**************************************************/
+function init_themind() {
+    const { exec } = require('child_process');
+
+    let options = {
+        timeout: 0,
+        stdio: 'inherit',
+        shell: true,
+    }
+    
+    exec('LD_LIBRARY_PATH=../mqtt_lib/lib ../Host/exe/Host -p 1883 -h localhost -n 2', options, (error,stdout,stderr)=>{
+                                                                                                    // console.log('stdout:', stdout);
+                                                                                                    // console.log('stderr:', stderr);
+                                                                                                    if (error) {
+                                                                                                        console.error('exec error:', error);
+                                                                                                        return;
+                                                                                                    }
+                                                                                                });  
+}
+
+function init() {
+        // Create an empty array to store players
+
+        server=http.createServer(app);
+        // Set up Socket.IO to listen on port 8000
+        socket = io.listen(server);
+        server.listen(8000);
+        app.use(express.static(__dirname+"/public"));
+
+        // Start listening for events
+        io.on("connection", onSocketConnection);
+        console.log("server.js started");
+};
+
+// New socket connection
+function onSocketConnection(client) {
+
+    console.log("New player has connected: " + client.constructor.name);
+    console.log("New player has connected: " + client.id);
+
+	//client.emit('message', mess);
+	sclient=client;
+	prot=1;
+};
+
+init_mqtt_server();
+init();
