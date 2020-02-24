@@ -11,8 +11,6 @@
 #include <pthread.h>
 #include <mymacro.h>
 
-#define PUB_PLAYER_TOPIC(id) "Player/"id
-#define SUB_HOST_TOPIC       "Host"
 static struct mosquitto *mosq = NULL;
 static int g_max_nb_players = 4;
 static int g_nb_players = 0;

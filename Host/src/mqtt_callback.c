@@ -46,14 +46,14 @@ void subscribe(struct mosquitto *mosq, char *topic, subscription_func on_subscri
 }
 void publish(struct mosquitto *mosq, char * pub_topic   , char *message, int qos)
 {
-	mosquitto_publish(mosq, NULL, pub_topic, strlen(message), message, qos, false);
+	mosquitto_publish(mosq, NULL, pub_topic, strlen(message), message, 0, false);
 }
 
 void add_publish_topic(char *topic){
-	if (g_nb_pub_topics > MAX_PUB_TOPIC - 1) {
-		EXIT_WITH_ERROR_MESSAGE("The number of publish topic cannot exceed %d", MAX_SUB_TOPIC);
-	}
-	strncpy(pub[g_nb_pub_topics++].topic, topic, strlen(topic));
+	// if (g_nb_pub_topics > MAX_PUB_TOPIC - 1) {
+	// 	EXIT_WITH_ERROR_MESSAGE("The number of publish topic cannot exceed %d", MAX_SUB_TOPIC);
+	// }
+	// strncpy(pub[g_nb_pub_topics++].topic, topic, strlen(topic));
 }
 void print_publish_topic()
 {
@@ -110,17 +110,17 @@ void my_subscribe_callback(struct mosquitto *mosq, void *userdata, int mid, int 
 
 void my_publish_callback(struct mosquitto *mosq, void *obj, int mid)
 {
-	last_mid_sent = mid;
-	// fprintf(stderr, _LOG("Published : %d"), mid);
-	if(mode == MSGMODE_STDIN_LINE){
-		if(mid == last_mid){
-			mosquitto_disconnect(mosq);
-			disconnect_sent = true;
-		}
-	}else if(disconnect_sent == false){
-		mosquitto_disconnect(mosq);
-		disconnect_sent = true;
-	}
+	// last_mid_sent = mid;
+	// // fprintf(stderr, _LOG("Published : %d"), mid);
+	// if(mode == MSGMODE_STDIN_LINE){
+	// 	if(mid == last_mid){
+	// 		mosquitto_disconnect(mosq);
+	// 		disconnect_sent = true;
+	// 	}
+	// }else if(disconnect_sent == false){
+	// 	mosquitto_disconnect(mosq);
+	// 	disconnect_sent = true;
+	// }
 }
 
 void my_log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str)

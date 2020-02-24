@@ -3,8 +3,10 @@
 
 #define NAME_LEN         128
 #define DECK_SIZE        100
+#define PLAYABLE_SIZE    48
 #define MAX_PLAYER       4
 #define MAX_LEVEL        12
+#define WINNING_LEVEL    8
 #define CARDS_PER_HAND   MAX_LEVEL
 #define TOPIC_LEN     128
 #define MESSAGE_LEN   256
@@ -12,6 +14,9 @@
 #define VOTE_NO   1
 #define VOTE_WAIT 0
 
+
+#define PUB_PLAYER_TOPIC(id) "Player/"id
+#define SUB_HOST_TOPIC       "Host"
 
 #define MSG_TYPE_CARD     'C'
 #define MSG_TYPE_DISCARD  'D'

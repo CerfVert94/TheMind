@@ -10,6 +10,16 @@
 #include <mymacro.h>
 #include <host.h>
 
+#define FMT_CH        " %d"
+#define FMT_CH_DUP4   FMT_CH FMT_CH FMT_CH FMT_CH
+#define FMT_CH_DUP8   FMT_CH_DUP4 FMT_CH_DUP4
+#define FMT_CH_DUP12  FMT_CH_DUP4 FMT_CH_DUP4 FMT_CH_DUP4
+#define FMT_CH_DUP16  FMT_CH_DUP8 FMT_CH_DUP8
+#define FMT_CH_DUP32  FMT_CH_DUP8 FMT_CH_DUP8 FMT_CH_DUP8
+#define FMT_CH_DUP48  FMT_CH_DUP8 FMT_CH_DUP8 FMT_CH_DUP8 FMT_CH_DUP8
+
+
+
 struct player_info{
     int  id;
     char name[NAME_LEN];
@@ -27,11 +37,14 @@ static int  g_nb_players = 0;
 static int  g_deck[DECK_SIZE];
 static int  g_deck_top   = 0; // Points to the last index of g_deck (the beyond become irrelevant)
 
-static int  g_played[DECK_SIZE];
+static int  g_played[PLAYABLE_SIZE];
 static int  g_played_top = 0; // Points to the last index of g_played
 
-static int  g_answer[DECK_SIZE];
+static int  g_answer[PLAYABLE_SIZE];
 static struct mosquitto *g_mosq;
+
+static int  g_discard[PLAYABLE_SIZE];
+static int  g_discard_top = 0; // Points to the last index of g_discard
 
 static int g_nb_shuffle = 100;
 /************************************************/
@@ -44,12 +57,15 @@ int init_game(int nb_shuffle) {
     // Create a new deck / initialize hands
     create_deck();
 
+    //Set round to 0
+    initialize_round();
+    
     //Set intial level to 1
     set_level(4);
     //Set intial initial lives
-    // set_lives(get_nb_players());
-    set_lives(100);
-
+    set_lives(get_nb_players());
+    
+    set_shurikens(1);
     
     // Set global number of shuffle.
     g_nb_shuffle = nb_shuffle;
@@ -65,22 +81,28 @@ int  end_game()
 }
 void start_new_round() {
     int i = 0, j = 0;
+    char msg[MESSAGE_LEN];
     for (i = 0; i < g_nb_players; i++) 
         for (j = 0; j < cards_per_level(); j++)
             g_players[i].hand[j] = 0;
         
-    for (i = 0; i < g_played_top; i++) {
+    for (i = 0; i < PLAYABLE_SIZE; i++) {
         g_played[i] = 0;
+        g_discard[i] = 0;
+        g_answer[i] = 0;
     }
     g_played_top = 0;
-    //Set round to 0
-    initialize_round();
+    g_discard_top = 0;
+    
+    next_round();
     
     // Distribute cards
     distribute_cards(g_nb_shuffle);
-
     // Publish hands to clients
     publish_hands();
+    publish_new_round();
+    snprintf(msg, MESSAGE_LEN, "Niveau %d", get_level());
+    publish_notice(msg);
 }
 
 bool check_answer() {
@@ -96,6 +118,7 @@ void play_card(int *hand, int card)
 {
     for (int i = 0; i < g_played_top + 1; i++) {
         if (g_played[i] == 0) {
+            publish_played(hand[card]);
             move_card(g_played, i, hand, card);
             g_played_top++;
             break;
@@ -105,7 +128,8 @@ void play_card(int *hand, int card)
 void discard_card(int *hand, int card) {
     for (int j = 0; j < g_deck_top; j++) {
         if (hand[card] == g_answer[j]) {
-            move_card(g_played, j, hand, card);
+            copy_card(g_discard, j, hand, card);
+            move_card(g_played , j, hand, card);
             g_played_top++;
             return;
         }
@@ -120,7 +144,8 @@ void message_from_player(char *message) {
     int msg_type = parse_message_type(message);
     int card, response, final_count, wrong_card;
 
-    if (!is_alive()) {
+    if (!is_alive() || get_level() >= WINNING_LEVEL) {
+        end_game();
         return;
     }
 
@@ -147,40 +172,67 @@ void message_from_player(char *message) {
         printf("Received ballot from Player %d (%d)\n", id, response);
 
         final_count = ballot_count();
-        if      (final_count == VOTE_NO) 
+        if      (final_count == VOTE_NO)  {
+            publish_notice("On a vote non pour shuriken.");
             printf("Motion denied.\n");
+        }
         else if (final_count == VOTE_YES) {
+            publish_notice("On a vote oui pour shuriken.");
             printf("Agreed upon shuriken.\n");
             printf("Discard the lowest cards from each hand\n");
             discard_lowest();
+            decrement_shuriken();
         }
         break;
 
         case MSG_TYPE_SHURIKEN: 
-        if (is_vote_called())
+        if (is_vote_called() || !is_shuriken_available())
             return;
         printf("Call a vote for a use of shuriken\n");
+        publish_notice("Votez pour shuriken.");
         init_vote(g_nb_players);
-        
+        publish_vote();
         break;
     }
     next_round();
     if (g_played_top < g_deck_top){
         if (!check_answer()){
+            
             decrement_life();
+            if (!is_alive()) {
+                publish_notice("Vous avez perdu.");
+                return;
+                // end_game();
+            }
+            // Remove last card from the played card list.
             move_card(g_players[id].hand, card, g_played, --g_played_top);
+            publish_played(-1); 
+
+            publish_notice("Mauvaise carte. Vous perdez une vie. On defausse les cartes plus basses.");
             printf("Wrong card.\n");
             printf("Life(s) : %d\n", get_lives());
             printf("Discard all cards lower than %d.\n", g_players[id].hand[card]);
             discard_lower(g_players[id].hand[card]);
         }
     }
+
     if (check_answer() && get_level() <= MAX_LEVEL && g_played_top == g_deck_top){
         printf("Level up !\n");
         printf("Start the new round!\n");
+        
+        if (rand() % 2) {
+            publish_notice("Vous gagnez un shuriken");
+            increment_shuriken();
+        }
+        else {
+            publish_notice("Vous gagnez une vie");
+            increment_life();
+        }
+        
         increment_level();
-        if(get_level() > MAX_LEVEL){ 
-            end_game();
+        if(get_level() >= WINNING_LEVEL){ 
+            publish_notice("Vous avez gagne! Fin de jeu.");
+            return;
         }
         else {
             start_new_round();
@@ -189,7 +241,9 @@ void message_from_player(char *message) {
 
     for (int i = 0; i < g_nb_players; i++) 
         pack_hand(g_players[i].hand, cards_per_level());
-    print_current_status();
+    
+    // print_current_status();
+    publish_hands();
 }
 /************************************************/
 
@@ -316,12 +370,17 @@ int get_lives(void) {
 }
 void set_lives(int lives) {
     g_lives = lives;
+    publish_life();
 }
 void decrement_life(void) {
-    g_lives--;
+    if (g_lives >= 0)
+        g_lives--;
+    publish_life();
 }
 void increment_life(void) {
-    g_lives++;
+    if (g_lives < 5)
+        g_lives++;
+    publish_life();
 }
 bool is_alive(void) {
     return g_lives >= 0;
@@ -358,15 +417,21 @@ int get_level(void) {
 /******************* SHURIKEN *******************/
 void set_shurikens(int shuriken) {
     g_shuriken = shuriken;
+    publish_shuriken();
 }
 int  get_shurikens(void) {
     return g_shuriken;
 }
 void decrement_shuriken(void) {
-    g_shuriken--;
+    if (g_shuriken > 0)
+        g_shuriken--;
+    publish_shuriken();
 }
 void increment_shuriken(void) {
-    g_shuriken++;
+    // 
+    if (g_shuriken < 3)
+        g_shuriken++;
+    publish_shuriken();
 }
 bool is_shuriken_available(void) {
     return g_shuriken > 0;
@@ -381,6 +446,9 @@ void initialize_round() {
 void next_round() {
     g_round++;
 }
+int  get_round(){
+    return g_round;
+}
 /************************************************/
 
 
@@ -391,7 +459,10 @@ void print_current_status() {
     printf("Current number of players : %d\n", g_nb_players);
     printf("Current level             : %d\n", g_level);
     printf("Current lives             : %d\n", g_lives);
+    printf("Current shurikens         : %d\n", g_shuriken);
+    printf("\n\n");
     printf("Entire deck (top %d) : \n", g_deck_top);
+    /*
     for (j = 0; j < 4; j++) {
         start = (DECK_SIZE / 4) * (j + 0);
         end   = (DECK_SIZE / 4) * (j + 1);
@@ -406,7 +477,7 @@ void print_current_status() {
         }
         printf("\n\n");
     }
-
+    */
     for (i = 0; i < MAX_PLAYER; i++) {
         printf("ID : %d / NAME : %s\n", g_players[i].id, g_players[i].name);
     }
@@ -418,26 +489,23 @@ void print_current_status() {
         }
         printf("\n");
     }
-    
-    printf("Played  : ");
-    for (i = 0; i < DECK_SIZE; i++) {
+    printf("\n\n");
+
+    printf("Played  :");
+    for (i = 0; i < PLAYABLE_SIZE; i++) {
         printf("%4d", g_played[i]);
     }
     printf("\n\n");
 
-    for (j = 0; j < 4; j++) {
-        start = (DECK_SIZE / 4) * (j + 0);
-        end   = (DECK_SIZE / 4) * (j + 1);
-        printf("Index  : ", i);
-        for (i = start; i < end; i++) {
-            printf("%4d", i);
-        }
-        printf("\n");
-        printf("Answer : ", i);
-        for (i = start; i < end; i++) {
-            printf("%4d", g_answer[i]);
-        }
-        printf("\n\n");
+    printf("Discard :");
+    for (i = 0; i < PLAYABLE_SIZE; i++) {
+        printf("%4d", g_discard[i]);
+    }
+    printf("\n\n");
+
+    printf("Answer  :");
+    for (i = 0; i < PLAYABLE_SIZE; i++) {
+        printf("%4d", g_answer[i]);
     }
     printf("\n\n");
     
@@ -454,15 +522,116 @@ void publish_hands()
 {
     int *hand; 
     char topic[TOPIC_LEN], message[MESSAGE_LEN];
+    int cnt = 0; 
     printf("publish_hands\n");
     for (int i = 0; i < g_nb_players; i++) {
         hand = g_players[i].hand;
-        snprintf(topic  , TOPIC_LEN  , "Player");
-        snprintf(message, MESSAGE_LEN, "H%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d%4d", hand[0], hand[1], hand[ 2], hand[ 3], hand[4], hand[5], hand[ 6], hand[ 7], hand[8], hand[9], hand[10], hand[11]);
-        printf("%s : %s\n", topic, message);
-        publish(g_mosq, topic, message, 2);
+        snprintf(topic  , TOPIC_LEN  , PUB_PLAYER_TOPIC("%d"), i);    
+        snprintf(message, MESSAGE_LEN, "H");   
+        cnt = 0; 
+        for (int j = 0; j < MAX_LEVEL; j++)
+           cnt += snprintf(&message[1 + cnt], MESSAGE_LEN - (1 + cnt), FMT_CH, hand[j]);
+        printf("%s:%s\n", topic, message);
+        publish(g_mosq, topic, message, 0);
     }
 }
+
+void publish_discard(int discarded)
+{
+    char topic[TOPIC_LEN], message[MESSAGE_LEN];
+    printf("publish_discard\n");
+    
+    for (int i = 0; i < g_nb_players; i++) {
+        snprintf(topic  , TOPIC_LEN  , PUB_PLAYER_TOPIC("%d"), i);
+        snprintf(message, MESSAGE_LEN, "D");
+        snprintf(&message[1], MESSAGE_LEN - 1, FMT_CH, discarded);
+        printf("%s:%s\n", topic, message);
+        publish(g_mosq, topic, message, 0);
+    }
+}
+
+void publish_played(int played)
+{
+    char topic[TOPIC_LEN], message[MESSAGE_LEN];
+    printf("publish_played\n");
+    
+    for (int i = 0; i < g_nb_players; i++) {
+        snprintf(topic  , TOPIC_LEN  , PUB_PLAYER_TOPIC("%d"), i);
+        snprintf(message, MESSAGE_LEN, "P");
+        snprintf(&message[1], MESSAGE_LEN - 1, FMT_CH, played);
+        printf("%s:%s\n", topic, message);
+        publish(g_mosq, topic, message, 0);
+    }
+}
+
+void publish_life() {
+    char topic[TOPIC_LEN], message[MESSAGE_LEN];
+    printf("publish_life\n");
+    
+    for (int i = 0; i < g_nb_players; i++) {
+        snprintf(topic  , TOPIC_LEN  , PUB_PLAYER_TOPIC("%d"), i);
+        snprintf(message, MESSAGE_LEN, "L");
+        snprintf(&message[1], MESSAGE_LEN - 1, FMT_CH, g_lives);
+        printf("%s:%s\n", topic, message);
+        publish(g_mosq, topic, message, 0);
+    }
+}
+void publish_shuriken() {
+   char topic[TOPIC_LEN], message[MESSAGE_LEN];
+    printf("publish_shurken\n");
+    
+    for (int i = 0; i < g_nb_players; i++) {
+        snprintf(topic  , TOPIC_LEN  , PUB_PLAYER_TOPIC("%d"), i);
+        snprintf(message, MESSAGE_LEN, "S");
+        snprintf(&message[1], MESSAGE_LEN - 1, FMT_CH, g_shuriken);
+        printf("%s:%s\n", topic, message);
+        publish(g_mosq, topic, message, 0);
+    }
+}
+void publish_new_round() {
+   char topic[TOPIC_LEN], message[MESSAGE_LEN];
+    printf("publish_new_round\n");
+    
+    for (int i = 0; i < g_nb_players; i++) {
+        snprintf(topic  , TOPIC_LEN  , PUB_PLAYER_TOPIC("%d"), i);
+        snprintf(message, MESSAGE_LEN, "N");
+        printf("%s:%s\n", topic, message);
+        publish(g_mosq, topic, message, 0);
+    }
+}
+void publish_vote() {
+    char topic[TOPIC_LEN], message[MESSAGE_LEN];
+    printf("publish_vote\n");
+    
+    for (int i = 0; i < g_nb_players; i++) {
+        snprintf(topic  , TOPIC_LEN  , PUB_PLAYER_TOPIC("%d"), i);
+        snprintf(message, MESSAGE_LEN, "V");
+        printf("%s:%s\n", topic, message);
+        publish(g_mosq, topic, message, 0);
+    }
+}
+void publish_notice(char *msg) {
+    char topic[TOPIC_LEN], message[MESSAGE_LEN];
+    printf("publish_notice\n");
+    snprintf(topic  , TOPIC_LEN  , "Player/Notice");
+    snprintf(message, MESSAGE_LEN, "%s", msg);
+    printf("%s:%s\n", topic, message);
+    publish(g_mosq, topic, message, 0);
+    
+}
+// void publish_played() {
+//    char topic[TOPIC_LEN], message[MESSAGE_LEN];
+//     printf("publish_shurken\n");
+    
+//     for (int i = 0; i < g_nb_players; i++) {
+//         snprintf(topic  , TOPIC_LEN  , PUB_PLAYER_TOPIC("%d"), i);
+//         snprintf(message, MESSAGE_LEN, "P");
+//         for (int j = 0; j < 48; j++)
+//             snprintf(&message[1], MESSAGE_LEN - 1, FMT_CH_DUP48, g_played[j]);
+//         printf("%s:%s\n", topic, message);
+//         publish(g_mosq, topic, message, 0);
+//     }
+// }
 /************************************************/
 
 
@@ -545,14 +714,16 @@ void discard_lowest() {
             if (hand[j] < hand[min_index] && hand[j] > 0)  
                 min_index = j;
         }
+        publish_discard(hand[min_index]);
+        discard_card(hand, min_index);
 
-        for (j = 0; j < g_deck_top; j++) {
-            if (hand[min_index] == g_answer[j]) {
-                move_card(g_played, j, hand, min_index);
-                g_played_top++;
-                break;
-            }
-        }
+        // for (j = 0; j < g_deck_top; j++) {
+        //     if (hand[min_index] == g_answer[j]) {
+        //         move_card(g_played, j, hand, min_index);
+        //         g_played_top++;
+        //         break;
+        //     }
+        // }
         //move_card(g_played, g_played_top++, hand, min_index);
         // sort(g_played, g_played_top);
     }
@@ -566,12 +737,14 @@ void discard_lower(int card) {
         for (j = 0; j < nb_cards; j++) {
             if (hand[j] <= card && hand[j] > 0)  {
                 // printf("[%d] %d <= %d\n", j, hand[j], card);
+                publish_discard(hand[j]);
                 discard_card(hand, j);
                 // printf("\thand[%d] = %d\n", j, hand[j], card);
             }
         }
         pack_hand(hand, nb_cards);
     }
+    // publish_discard();
 
 }
 /************************************************/

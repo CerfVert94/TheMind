@@ -53,6 +53,7 @@ bool is_shuriken_available(void);
 /********************* TURN *********************/
 void initialize_round();
 void next_round();
+int  get_round();
 /************************************************/
 
 
@@ -81,6 +82,15 @@ void print_current_status();
 /**************** MQTT FUNCTIONS ****************/
 void set_mosquitto(struct mosquitto *);
 void publish_hands();
+void publish_discard(int);
+void publish_played(int);
+void publish_life();
+void publish_shuriken();
+void publish_message();
+void publish_new_round();
+void publish_vote();
+void publish_notice(char*);
+
 /************************************************/
 
 /************************************************/
