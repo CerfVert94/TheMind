@@ -1,0 +1,12 @@
+typedef void (*subscription_func)(char *message);
+void subscribe(struct mosquitto *mosq, char *topic, subscription_func on_subscribe, int qos);
+void publish(struct mosquitto *mosq, char * pub_topic   , char *message, int qos);
+void add_publish_topic(char *topic);
+void publish_from_topic_id(struct mosquitto *mosq, int    pub_topic_id, char *message, int qos);
+void print_publish_topic();
+void print_subscribe_topic();
+void my_message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);
+void my_connect_callback(struct mosquitto *mosq, void *userdata, int result);
+void my_subscribe_callback(struct mosquitto *mosq, void *userdata, int mid, int qos_count, const int *granted_qos);
+void my_publish_callback(struct mosquitto *mosq, void *obj, int mid);
+void my_log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str);
