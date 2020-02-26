@@ -87,7 +87,7 @@ void publish_played(int);
 void publish_life();
 void publish_shuriken();
 void publish_message();
-void publish_new_round();
+void publish_new_level();
 void publish_vote();
 void publish_notice(char*);
 

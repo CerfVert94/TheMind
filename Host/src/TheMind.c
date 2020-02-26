@@ -93,13 +93,13 @@ void start_new_round() {
     g_played_top = 0;
     g_discard_top = 0;
     
-    next_round();
+    // next_round();
     
     // Distribute cards
     distribute_cards(g_nb_shuffle);
     // Publish hands to clients
     publish_hands();
-    publish_new_round();
+    publish_new_level();
     snprintf(msg, MESSAGE_LEN, "Niveau %d", get_level());
     publish_notice(msg);
 }
@@ -579,9 +579,9 @@ void publish_shuriken() {
         publish(g_mosq, topic, message, 0);
     }
 }
-void publish_new_round() {
+void publish_new_level() {
    char topic[TOPIC_LEN], message[MESSAGE_LEN];
-    printf("publish_new_round\n");
+    printf("publish_new_level\n");
     
     for (int i = 0; i < g_nb_players; i++) {
         snprintf(topic  , TOPIC_LEN  , PUB_PLAYER_TOPIC("%d"), i);

@@ -93,6 +93,9 @@ bool start_game(struct mosquitto *mosq) {
 		printf("All player joined\n");
 		set_mosquitto(mosq);
 		init_game(100);
+
+		// MQTT subscription wrapper to add sub topic freely.
+		// Refer to message_from_player in TheMind.c to see the details of the game play. 
 		subscribe(mosq, SUB_HOST_TOPIC, message_from_player, 2);
 	}
 	return false;
