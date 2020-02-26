@@ -93,7 +93,6 @@ bool start_game(struct mosquitto *mosq) {
 		printf("All player joined\n");
 		set_mosquitto(mosq);
 		init_game(100);
-		printf("Msg_from_player : %p\n", message_from_player);
 		subscribe(mosq, SUB_HOST_TOPIC, message_from_player, 2);
 	}
 	return false;
@@ -132,10 +131,8 @@ int main(int argc, char *argv[])
 	pthread_create(&mqtt_thread, NULL, start_mqtt, &param);
 	// printf("%s %d / %d\n", address, port, nb_players);
 	while(start_game(mosq));
-	printf("End\n");
+	printf("Start : TheMind\n");
+
 	while(1);
-	// char message[MESSAGE_LEN] = "P1 D 99";
-	// printf("%d %c %d\n", parse_player_id(message), parse_message_type(message), parse_card(message));
-	
 	return 0;
 }

@@ -188,8 +188,7 @@ void message_from_player(char *message) {
         publish_vote();
         break;
     }
-    next_round();
-    // Check answer to discard cards.
+    // Check answer to penalize.
     if (g_played_top < g_deck_top){
         if (!check_answer()){
             
