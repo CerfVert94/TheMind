@@ -1,5 +1,5 @@
 # The Mind
-##[IMPORTANT] Install npm and cmake beforehand.
+## [IMPORTANT] Install npm and cmake beforehand.
 
 Enter the following lines in a terminal.
 ./install.sh
