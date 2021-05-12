@@ -1,4 +1,13 @@
 # The Mind
+## Architecture
+<img src="https://raw.githubusercontent.com/CerfVert94/TheMind/master/doc/Architecture.png"></img>
+
+## Game Play Screenshot
+<img src="https://raw.githubusercontent.com/CerfVert94/TheMind/master/doc/GamePlay.png"></img>
+
+## Game Rule 
+https://boardgamegeek.com/boardgame/244992/mind
+
 ## [IMPORTANT] Install npm and cmake beforehand.
 
 Enter the following lines in a terminal. <br>
@@ -18,3 +27,4 @@ After launching CMake, the dynamic library (libmosquitto.so.1.6.8) should be gen
 To launch the game host of TheMind manually, <br>
 enter the following command in the Host directory: <br>
 LD_LIBRARY_PATH=../mqtt_lib/lib ./exe/Host
+
