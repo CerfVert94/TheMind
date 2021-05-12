@@ -1,9 +1,9 @@
 # The Mind
 ## [IMPORTANT] Install npm and cmake beforehand.
 
-Enter the following lines in a terminal.
-./install.sh
-./launch.sh
+Enter the following lines in a terminal. <br>
+./install.sh <br>
+./launch.sh <br>
 
 Then, enter following URLs in a web browser :<br>
 http://localhost:8000/index.html?name=Alice <br>
