@@ -1,7 +1,7 @@
 var mqtt;
 var reconnectTimeout = 2000;
-var host="127.0.0.1"; //change this
-var port=9000;
+var host = "localhost"; //change this
+var port = 9000;
 var pub_message;
 var href;
 // let myName = null;
@@ -14,25 +14,25 @@ function onConnect() {
 }
 
 function MQTTconnect() {
-    console.log("connecting to "+ host +" "+ port);
+    console.log("connecting to " + host + " " + port);
     myCID = Math.floor(Math.random() * 65535);
     mqtt = new Paho.MQTT.Client(host, port, myCID.toString());
     //document.write("connecting to "+ host);
     var options = {
         timeout: 3,
         onSuccess: onConnect,
-        
-        };
+
+    };
     mqtt.connect(options); //connect
 }
 
 let notice_topic = "Player/Notice";
 function connect2TheMind(name) {
     let pub_message;
-    
+
     mqtt.subscribe(name);
     mqtt.subscribe(notice_topic);
-    pub_message                 = new Paho.MQTT.Message(name);
+    pub_message = new Paho.MQTT.Message(name);
     pub_message.destinationName = "TheMind";
     mqtt.send(pub_message);
     mqtt.onMessageArrived = onMessageArrived;
@@ -44,8 +44,8 @@ function parseMessage(destinationName, payloadString) {
         alert(payloadString);
         return;
     }
-    
-    let id       = parseID(destinationName),
+
+    let id = parseID(destinationName),
         msg_type, data;
 
     if (id != myID) return;
@@ -55,7 +55,7 @@ function parseMessage(destinationName, payloadString) {
     payloadString = parseSubMessage(payloadString)
     console.log("ID : " + id.toString());
     msg_type = payloadString['msg_type'];
-    data     = payloadString['data'];
+    data = payloadString['data'];
     // console.log(msg_type, data);
 
     if (msg_type == 'L') {
@@ -65,7 +65,7 @@ function parseMessage(destinationName, payloadString) {
         nb_shrks = data[0].toString();
     }
     else if (msg_type == 'N') {
-        played_cards    = []
+        played_cards = []
         discarded_cards = []
     }
     else if (msg_type == 'H') {
@@ -98,12 +98,12 @@ function parseMessage(destinationName, payloadString) {
     else if (msg_type == 'V') {
         voting = true;
     }
-    
+
 }
 
-function onMessageArrived(msg){
-    out_msg=
-    console.log("Topic   received : " + msg.destinationName);
+function onMessageArrived(msg) {
+    out_msg =
+        console.log("Topic   received : " + msg.destinationName);
     console.log("Message received : " + msg.payloadString);
     if (!connected) {
         if (msg.destinationName == myName) {
@@ -123,13 +123,13 @@ function onMessageArrived(msg){
     }
 }
 function playLowestCard() {
-    let pub_message             = new Paho.MQTT.Message("P" + myID.toString() + " C 0");
+    let pub_message = new Paho.MQTT.Message("P" + myID.toString() + " C 0");
     pub_message.destinationName = "Host";
     mqtt.send(pub_message);
 }
 
 function voteNo() {
-    let pub_message             = new Paho.MQTT.Message("P" + myID.toString() + " V 1");
+    let pub_message = new Paho.MQTT.Message("P" + myID.toString() + " V 1");
     pub_message.destinationName = "Host";
     mqtt.send(pub_message);
     voting = false;
@@ -137,7 +137,7 @@ function voteNo() {
 }
 
 function voteYes() {
-    let pub_message             = new Paho.MQTT.Message("P" + myID.toString() + " V 2");
+    let pub_message = new Paho.MQTT.Message("P" + myID.toString() + " V 2");
     pub_message.destinationName = "Host";
     mqtt.send(pub_message);
     voting = false;
@@ -145,7 +145,7 @@ function voteYes() {
 }
 
 function useShuriken() {
-    let pub_message             = new Paho.MQTT.Message("P" + myID.toString() + " S");
+    let pub_message = new Paho.MQTT.Message("P" + myID.toString() + " S");
     pub_message.destinationName = "Host";
     mqtt.send(pub_message);
 
