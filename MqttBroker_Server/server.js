@@ -101,7 +101,7 @@ function init() {
     // Start listening for events
     io.on("connection", onSocketConnection);
     console.log("server.js started");
-    console.log("Open following links. (Name query can be modifiable but don't delete it.)");
+    console.log("Open the following links. (Name query can be modifiable but don't delete it.)");
     console.log("http://localhost:8000/index.html?name=User1");
     console.log("http://localhost:8000/index.html?name=User2");
     console.log("http://localhost:8000/index.html?name=User3");
